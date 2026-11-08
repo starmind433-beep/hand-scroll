@@ -14,14 +14,16 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.7
+      - name: Install Gradle
+        run: |
+          curl -fL --retry 5 --retry-delay 10 --retry-all-errors -o gradle.zip https://services.gradle.org/distributions/gradle-8.7-bin.zip || curl -fL --retry 5 --retry-delay 10 --retry-all-errors -o gradle.zip https://mirrors.cloud.tencent.com/gradle/gradle-8.7-bin.zip
+          unzip -q gradle.zip -d $HOME
+          echo "$HOME/gradle-8.7/bin" >> $GITHUB_PATH
 
       - name: Download hand tracking model
         run: |
           mkdir -p app/src/main/assets
-          curl -L -o app/src/main/assets/hand_landmarker.task https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
+          curl -fL --retry 5 --retry-delay 10 --retry-all-errors -o app/src/main/assets/hand_landmarker.task https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
 
       - name: Build APK
         run: gradle assembleDebug
