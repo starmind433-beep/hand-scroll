@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HandScroll</string>
+    <string name="accessibility_description">Lets HandScroll swipe the screen when it sees your hand gestures.</string>
+</resources>
