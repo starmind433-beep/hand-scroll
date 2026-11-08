@@ -9,6 +9,7 @@ import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.os.Build
 import android.os.SystemClock
+import android.util.Size
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -25,6 +26,11 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class CameraService : LifecycleService() {
+
+    // Tuning values: smaller MOVE_THRESHOLD = more sensitive
+    private val MOVE_THRESHOLD = 0.10f
+    private val WINDOW_MS = 500L
+    private val COOLDOWN_MS = 700L
 
     private lateinit var executor: ExecutorService
     private var handLandmarker: HandLandmarker? = null
@@ -76,6 +82,9 @@ class CameraService : LifecycleService() {
         val options = HandLandmarker.HandLandmarkerOptions.builder()
             .setBaseOptions(base)
             .setNumHands(1)
+            .setMinHandDetectionConfidence(0.3f)
+            .setMinHandPresenceConfidence(0.3f)
+            .setMinTrackingConfidence(0.3f)
             .setRunningMode(RunningMode.LIVE_STREAM)
             .setResultListener { result, _ -> onResult(result) }
             .setErrorListener { }
@@ -90,6 +99,7 @@ class CameraService : LifecycleService() {
                 val provider = future.get()
                 cameraProvider = provider
                 val analysis = ImageAnalysis.Builder()
+                    .setTargetResolution(Size(480, 640))
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                     .build()
@@ -131,16 +141,17 @@ class CameraService : LifecycleService() {
             history.clear()
             return
         }
-        val y = hands[0][9].y()
+        val l = hands[0]
+        val y = (l[0].y() + l[5].y() + l[9].y() + l[13].y() + l[17].y()) / 5f
         history.addLast(Pair(now, y))
-        while (history.isNotEmpty() && now - history.first().first > 400) {
+        while (history.isNotEmpty() && now - history.first().first > WINDOW_MS) {
             history.removeFirst()
         }
-        if (now - lastSwipeTime < 1200 || history.size < 3) return
+        if (now - lastSwipeTime < COOLDOWN_MS || history.size < 2) return
         val dy = y - history.first().second
-        if (dy < -0.20f) {
+        if (dy < -MOVE_THRESHOLD) {
             trigger(true)
-        } else if (dy > 0.20f) {
+        } else if (dy > MOVE_THRESHOLD) {
             trigger(false)
         }
     }
